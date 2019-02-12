@@ -1,4 +1,4 @@
-import argparse, random
+import argparse, os, random
 
 
 class Board:
@@ -19,13 +19,12 @@ class Board:
                 self.winning_lines[-1].append((j, i))
                 
         # add winning diagonal lines
-        if n % 2 == 1:
-            self.winning_lines.append([])
-            for i in range(n):
-                self.winning_lines[-1].append((i, i))
-            self.winning_lines.append([])
-            for i in range(n):
-                self.winning_lines[-1].append(((n-1)-i, i))
+        self.winning_lines.append([])
+        for i in range(n):
+            self.winning_lines[-1].append((i, i))
+        self.winning_lines.append([])
+        for i in range(n):
+            self.winning_lines[-1].append(((n-1)-i, i))
 
     def __str__(self):
         result = '\n'
@@ -99,10 +98,7 @@ class Player:
         self.symbol = symbol
         self.board = board
 
-    def move_randomly(self):
-        open_cells = self.board.get_open_cells()
-        random_index = random.randint(0, len(open_cells)-1)
-        position = open_cells[random_index]
+    def add_move(self, position):
         self.board.add_move(position, self.symbol)
 
     def choose_move(self):
@@ -118,6 +114,12 @@ class Player:
             except:
                 print('Cannot read input. Please try again.')
 
+    def random_move(self):
+        open_cells = self.board.get_open_cells()
+        random_index = random.randint(0, len(open_cells)-1)
+        position = open_cells[random_index]
+        self.board.add_move(position, self.symbol)
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -132,13 +134,16 @@ if __name__ == "__main__":
     winner = None
 
     while True:
+        os.system('clear') # clear screen before printing updated grid
         print(board)
         print('Player X, choose an option:')
-        opt = int(input('(1) Enter a move, (2) Random move\n').strip())
-        if opt == 1:
+        opt = input('(1) Enter a move\n(2) Random move\n(x) Exit\n').strip()
+        if opt == '1':
             player_x.choose_move()
-        elif opt == 2:
-            player_x.move_randomly()
+        elif opt == '2':
+            player_x.random_move()
+        elif opt == 'x':
+            exit(0)
 
         game_over, winner = board.check_for_win()
         if game_over:
@@ -146,22 +151,28 @@ if __name__ == "__main__":
 
         potential = board.compute_danger()
         optimal_move = board.get_optimal_move()
+        
+        os.system('clear') # clear screen before printing updated grid
         print(board)
         print('Erdos-Selfridge potential: ' + str(potential))
         print('Optimal move: ' + str(optimal_move) + '\n')
 
         print('Player O, choose an option:')
-        opt = int(input('(1) Enter a move, (2) Random move\n').strip())
-        if opt == 1:
+        opt = input('(1) Enter a move\n(2) Random move\n(3) Potential strategy\n(x) Exit\n').strip()
+        if opt == '1':
             player_o.choose_move()
-        elif opt == 2:
-            player_o.move_randomly()
+        elif opt == '2':
+            player_o.random_move()
+        elif opt == '3':
+            player_o.add_move(optimal_move)
+        elif opt == 'x':
+            exit(0)
 
         game_over, winner = board.check_for_win()
         if game_over:
             break
 
-    for row in board.cells:
-        print(row)
-    print('\nGame over. ' + str(winner) + ' wins!')
+    os.system('clear') # clear screen before printing updated grid
+    print(board)
+    print('Game over. ' + str(winner) + ' wins!')
 
