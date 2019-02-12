@@ -3,6 +3,7 @@ import argparse, os, random
 
 class Board:
     def __init__(self, n):
+        self.size = n
         self.cells = [[' ' for _ in range(n)] for _ in range(n)]
         self.winning_lines = []
         
@@ -27,9 +28,31 @@ class Board:
             self.winning_lines[-1].append(((n-1)-i, i))
 
     def __str__(self):
-        result = '\n'
-        for row in self.cells:
-            result += str(row) + '\n'
+        result = ''
+        for i in range(self.size):
+            # print top part of row
+            line = '  '
+            for _ in range(self.size):
+                line += '+---'
+            line += '+\n'
+            result += line
+
+            # print middle section of row
+            line = str(self.size - 1 - i) + ' '
+            for j in range(self.size):
+                line += '| ' + self.cells[i][j] + ' '
+            line += '|\n'
+            result += line
+
+        # print bottom line of bottom row with labels
+        line = '  '
+        labels = '    '
+        for i in range(self.size):
+            line += '+---'
+            labels += str(i) + '   '
+        line += '+\n'
+        result += line + labels
+
         return result
 
     def get_open_cells(self):
@@ -46,8 +69,8 @@ class Board:
         # in line that contains no o's)
         danger = 0
         for line in self.winning_lines:
-            if 'o' not in line:
-                danger += (1/2)**(len(line) - line.count('x'))
+            if 'O' not in line:
+                danger += (1/2)**(len(line) - line.count('X'))
         return danger
 
     def get_optimal_move(self):
@@ -59,8 +82,8 @@ class Board:
         for pos in open_cells:
             val = 0
             for line in self.winning_lines:
-                if pos in line and 'o' not in line:
-                    val += (1/2)**(len(line) - line.count('x'))
+                if pos in line and 'O' not in line:
+                    val += (1/2)**(len(line) - line.count('X'))
             if val > best_move_val:
                 best_move = pos
                 best_move_val = val
@@ -75,7 +98,7 @@ class Board:
                     self.winning_lines[i][j] = symbol
 
         # remove winning lines that contain both symbols
-        temp = list(filter(lambda lst: not('x' in lst and 'o' in lst), self.winning_lines))
+        temp = list(filter(lambda lst: not('X' in lst and 'O' in lst), self.winning_lines))
         self.winning_lines = temp
 
         # add move to board
@@ -86,9 +109,9 @@ class Board:
             return True, 'No one'
 
         for line in self.winning_lines:
-            if line.count('x') == len(line):
+            if line.count('X') == len(line):
                 return True, 'Player X'
-            elif line.count('o') == len(line):
+            elif line.count('O') == len(line):
                 return True, 'Player O'
         return False, None
 
@@ -105,7 +128,7 @@ class Player:
         while True:
             try:
                 pos = input('Please enter x,y coordinates: ').split(',')
-                pos = tuple(int(c.strip("()[] ")) for c in pos)
+                pos = convert_to_working(tuple(int(c.strip("()[] ")) for c in pos), self.board)
                 if pos in self.board.get_open_cells():
                     self.board.add_move(pos, self.symbol)
                     break
@@ -121,6 +144,18 @@ class Player:
         self.board.add_move(position, self.symbol)
 
 
+def convert_to_display(coordinates, board):
+    x = coordinates[1]
+    y = (board.size - 1) - coordinates[0]
+    return (x, y)
+
+
+def convert_to_working(coordinates, board):
+    x = (board.size - 1) - coordinates[1]
+    y = coordinates[0]
+    return (x, y)
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('size', type=int, help='size of board (height/width')
@@ -128,8 +163,8 @@ if __name__ == "__main__":
     size = args.size
 
     board = Board(size)
-    player_x = Player('x', board)
-    player_o = Player('o', board)
+    player_x = Player('X', board)
+    player_o = Player('O', board)
     game_over = False
     winner = None
 
@@ -155,7 +190,7 @@ if __name__ == "__main__":
         os.system('clear') # clear screen before printing updated grid
         print(board)
         print('Erdos-Selfridge potential: ' + str(potential))
-        print('Optimal move: ' + str(optimal_move) + '\n')
+        print('Optimal move: ' + str(convert_to_display(optimal_move, board)) + '\n')
 
         print('Player O, choose an option:')
         opt = input('(1) Enter a move\n(2) Random move\n(3) Potential strategy\n(x) Exit\n').strip()
