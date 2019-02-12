@@ -417,7 +417,7 @@ if __name__ == "__main__":
         print(endgame_message)
 
     else:
-        compute_paths(rows, cols, cell_to_avoid, RED)
+        compute_paths(rows, cols, cell_to_avoid, RED, True)
         print_summary(all_lengths_red, lengths_avoiding_cell_red)
 
     exit(0)
