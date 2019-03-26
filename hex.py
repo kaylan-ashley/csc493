@@ -280,46 +280,46 @@ def compute_optimal_move(rows: int, cols: int, red_moves: Set[Tuple[int, int]],
     # selects a move. The move that minimizes this value is the one we want
     # to choose.
 
-    for tile in open_tiles:
-        if tile != next_move:
-            potential = 0
-            moves.add(tile)
-            for path in paths:
-                if next_move not in path:
-                    potential += (1/2)**(len(path.difference(moves)))
-            moves.remove(tile)
-            if potential > next_move_potential:
-                next_move_potential = potential
-    print('Move ' + str(next_move) + ' gives max Red potential ' + str(next_move_potential))
-
-    for move in open_tiles[1:]:
-        max_potential = -1
-        for tile in open_tiles:
-            if tile != move:
-                potential = 0
-                moves.add(tile)
-                for path in paths:
-                    if move not in path:
-                        potential += (1/2)**(len(path.difference(moves)))
-                moves.remove(tile)
-                if potential > max_potential:
-                    max_potential = potential
-        print('Move ' + str(move) + ' gives max Red potential ' + str(max_potential))
-        if max_potential < next_move_potential:
-            next_move = move
-            next_move_potential = max_potential
-
-    # # find a move that minimizes the potential function
+    # for tile in open_tiles:
+    #     if tile != next_move:
+    #         potential = 0
+    #         moves.add(tile)
+    #         for path in paths:
+    #             if next_move not in path:
+    #                 potential += (1/2)**(len(path.difference(moves)))
+    #         moves.remove(tile)
+    #         if potential > next_move_potential:
+    #             next_move_potential = potential
+    # print('Move ' + str(next_move) + ' gives max Red potential ' + str(next_move_potential))
+    #
     # for move in open_tiles[1:]:
-    #     temp_potential = 0
-    #     moves.add(move)
-    #     for path in paths:
-    #         temp_potential += (1/2)**(len(path.difference(moves)))
-    #     moves.remove(move)
-    #     print('Move ' + str(move) + ' gives potential ' + str(temp_potential))
-    #     if temp_potential > next_move_potential:
+    #     max_potential = -1
+    #     for tile in open_tiles:
+    #         if tile != move:
+    #             potential = 0
+    #             moves.add(tile)
+    #             for path in paths:
+    #                 if move not in path:
+    #                     potential += (1/2)**(len(path.difference(moves)))
+    #             moves.remove(tile)
+    #             if potential > max_potential:
+    #                 max_potential = potential
+    #     print('Move ' + str(move) + ' gives max Red potential ' + str(max_potential))
+    #     if max_potential < next_move_potential:
     #         next_move = move
-    #         next_move_potential = temp_potential
+    #         next_move_potential = max_potential
+
+    # find a move that minimizes the potential function
+    for move in open_tiles[1:]:
+        temp_potential = 0
+        moves.add(move)
+        for path in paths:
+            temp_potential += (1/2)**(len(path.difference(moves)))
+        moves.remove(move)
+        print('Move ' + str(move) + ' gives potential ' + str(temp_potential))
+        if temp_potential > next_move_potential:
+            next_move = move
+            next_move_potential = temp_potential
 
     return next_move, next_move_potential
 
