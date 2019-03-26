@@ -2,26 +2,30 @@
 """
 Compute the lengths and total number of induced paths on a hex grid.
 
-NOTE: If you are running this program in a bash shell, the optional 
-      argument cell_to_avoid requires quotation marks around it. 
+NOTE: If you are running this program in a bash shell, the optional
+      argument cell_to_avoid requires quotation marks around it.
       ex: python hex_v4.py 3 4 "(1, 1)"
 """
 __author__ = "Kaylan Arnoldt-Smith"
 __email__ = "k.arnoldt.smith@mail.utoronto.ca"
 
-import argparse, os, random, time
+import argparse
+import os
+import random
 from typing import Dict, List, Set, Tuple
 
 RED = True
 BLUE = False
 possible_moves = [(0, 1), (1, 1), (1, 0), (0, -1), (-1, -1), (-1, 0)]
 
+
 class Path:
-    def __init__(self, last: Tuple[int], all_but_last: Set[Tuple[int]]) -> None:
+    def __init__(self, last: Tuple[int, int],
+                 all_but_last: Set[Tuple[int, int]]) -> None:
         self.last = last
         self.all_but_last = all_but_last
 
-    def is_minimal(self, tile: Tuple[int]) -> bool:
+    def is_minimal(self, tile: Tuple[int, int]) -> bool:
         for m in possible_moves:
             if (tile[0] + m[0], tile[1] + m[1]) in self.all_but_last:
                 return False
@@ -35,14 +39,15 @@ def add_length(length: int, distr: Dict[int, int]) -> None:
         distr[length] = 1
 
 
-def is_in_bounds(rows: int, cols: int, next_move: Tuple[int]) -> bool:
+def is_in_bounds(rows: int, cols: int, next_move: Tuple[int, int]) -> bool:
     if 0 <= next_move[0] < cols:
         if 0 <= next_move[1] < rows:
             return True
     return False
 
 
-def print_summary(all_lengths: Dict[int, int], lengths_avoiding_cell: Dict[int, int]) -> None:
+def print_summary(all_lengths: Dict[int, int],
+                  lengths_avoiding_cell: Dict[int, int]) -> None:
     lst = sorted(all_lengths.items(), key=lambda x: (x[0]))
     num_paths = sum(all_lengths.values())
     num_paths_avoiding_cell = sum(lengths_avoiding_cell.values())
@@ -62,7 +67,8 @@ def print_summary(all_lengths: Dict[int, int], lengths_avoiding_cell: Dict[int, 
     print("")
 
 
-def print_grid(rows: int, cols: int, red_moves: Set[Tuple[int]], blue_moves: Set[Tuple[int]], print_length_distr: bool) -> None:
+def print_grid(rows: int, cols: int, red_moves: Set[Tuple[int, int]],
+               blue_moves: Set[Tuple[int, int]], print_length_distr: bool) -> None:
     os.system('clear') # clear screen before printing updated grid
 
     if print_length_distr:
@@ -102,7 +108,7 @@ def print_grid(rows: int, cols: int, red_moves: Set[Tuple[int]], blue_moves: Set
             line += " "
         for _ in range(0, cols):
             line += "\\ / "
-        if j != rows-1: 
+        if j != rows-1:
             line += "\\" # omit last backslash in bottom row
         print(line)
 
@@ -116,12 +122,13 @@ def print_grid(rows: int, cols: int, red_moves: Set[Tuple[int]], blue_moves: Set
     print(line + "\n")
 
 
-def compute_paths(rows: int, cols: int, cell_to_avoid: List[Tuple[int]], player: bool, returning_all: bool) -> List[Set[Tuple[int]]]:
-    ''' 
-    Precondition: rows > 1
-    Note: This function returns all possible paths on an empty grid. Given a cell (or multiple cells) to avoid,
-          it will only compute the length distribution of paths avoiding those cells.
-    '''
+def compute_paths(rows: int, cols: int, cell_to_avoid: List[Tuple[int, int]],
+                  player: bool, returning_all: bool) -> List[Set[Tuple[int, int]]]:
+    """ Precondition: rows > 1
+    Note: This function returns all possible paths on an empty grid.
+          Given a cell (or multiple cells) to avoid, it will only compute
+          the length distribution of paths avoiding those cells.
+    """
     q = []
     paths = []
     all_lengths = {}
@@ -154,13 +161,25 @@ def compute_paths(rows: int, cols: int, cell_to_avoid: List[Tuple[int]], player:
                     # to distribution of lengths of paths avoiding cell
                     if cell_to_avoid:
                         ok_to_add = True
-                        for i in range(len(cell_to_avoid)):
-                            if next_move == cell_to_avoid[i] or p.last == cell_to_avoid[i]:
-                                ok_to_add = False
-                                break
-                            if cell_to_avoid[i] in p.all_but_last:
-                                ok_to_add = False
-                                break
+                        for cell in cell_to_avoid:
+                            if player == RED:
+                                if next_move == cell or p.last == cell:
+                                    ok_to_add = False
+                                    break
+                                if cell in p.all_but_last:
+                                    ok_to_add = False
+                                    break
+                            else:  # player == BLUE
+                                swapped_cell = (cell[1], cell[0])
+                                if next_move == swapped_cell:
+                                    ok_to_add = False
+                                    break
+                                if p.last == swapped_cell:
+                                    ok_to_add = False
+                                    break
+                                if swapped_cell in p.all_but_last:
+                                    ok_to_add = False
+                                    break
                         if ok_to_add:
                             add_length(path_length, lengths_avoiding_cell)
 
@@ -175,9 +194,14 @@ def compute_paths(rows: int, cols: int, cell_to_avoid: List[Tuple[int]], player:
                 elif next_move[1] != 0:
                     ok_to_add = True
                     if cell_to_avoid:
-                        for i in range(len(cell_to_avoid)):
-                            if next_move == cell_to_avoid[i]:
-                                ok_to_add = False
+                        for cell in cell_to_avoid:
+                            if player == RED:
+                                if next_move == cell:
+                                    ok_to_add = False
+                            else:  # player == BLUE
+                                swapped_cell = (cell[1], cell[0])
+                                if next_move == swapped_cell:
+                                    ok_to_add = False
                     if ok_to_add or returning_all:
                         # add path augmented with next move to queue
                         new_path = Path(next_move, p.all_but_last.copy())
@@ -193,28 +217,46 @@ def compute_paths(rows: int, cols: int, cell_to_avoid: List[Tuple[int]], player:
 
         # We computed the set of Blue paths by rotating the board 90 degrees,
         # so we need to swap the coordinates of the tiles in those paths.
+        # print('blue paths before swapping coordinates:')
+        # for p in paths:
+        #     print(p)
         for i in range(0, len(paths)):
             p = set()
             for tile in paths[i]:
                 p.add((tile[1], tile[0]))
             paths[i] = p
+        # print('blue paths after swapping coordinates:')
+        # for p in paths:
+        #     print(p)
 
     return paths
 
 
-def get_open_tiles(rows: int, cols: int, red_moves: Set[Tuple[int]], blue_moves: Set[Tuple[int]]) -> List[Tuple[int]]:
+def get_open_tiles(rows: int, cols: int, red_moves: Set[Tuple[int, int]],
+                   blue_moves: Set[Tuple[int, int]]) -> List[Tuple[int, int]]:
     open_tiles = []
     for x in range(0, cols):
         for y in range(0, rows):
-            if (x,y) not in red_moves and (x,y) not in blue_moves:
+            if (x, y) not in red_moves and (x, y) not in blue_moves:
                 open_tiles.append((x, y))
     return open_tiles
 
 
-def compute_optimal_move(rows: int, cols: int, red_moves: Set[Tuple[int]], blue_moves: Set[Tuple[int]], paths: List[Set[Tuple[int]]], turn: bool):
-    ''' 
-    Compute the optimal next move according to the Erdos-Selfridge potential strategy.
-    Return the next move and the Erdos-Selfridge potential that will result from playing it.
+def compute_potential(paths: List[Set[Tuple[int, int]]],
+                      moves: Set[Tuple[int, int]]):
+    potential = 0
+    for path in paths:
+        potential += (1 / 2) ** (len(path.difference(moves)))
+    return potential
+
+
+def compute_optimal_move(rows: int, cols: int, red_moves: Set[Tuple[int, int]],
+                         blue_moves: Set[Tuple[int, int]],
+                         paths: List[Set[Tuple[int, int]]], turn: bool):
+    '''
+    Compute the optimal next move according to the Erdos-Selfridge
+    potential strategy. Return the next move and the Erdos-Selfridge
+    potential that will result from playing it.
 
     rows: The number of rows in the grid
     cols: The number of columns in the grid
@@ -227,26 +269,59 @@ def compute_optimal_move(rows: int, cols: int, red_moves: Set[Tuple[int]], blue_
     # initialize variables
     open_tiles = get_open_tiles(rows, cols, red_moves, blue_moves)
     next_move = open_tiles[0]
-    potential = 0
+    next_move_potential = -1
     if turn == RED:
         moves = blue_moves
-    else:
+    else:  # turn == BLUE
         moves = red_moves
-    for path in paths:
-        if next_move not in path:
-            potential += (1/2)**(len(path.difference(moves)))
 
-    # find a move that minimizes the potential function
+    # For every possible move, we want to compute the maximum value of the
+    # potential function after we play that move and then the other player
+    # selects a move. The move that minimizes this value is the one we want
+    # to choose.
+
+    for tile in open_tiles:
+        if tile != next_move:
+            potential = 0
+            moves.add(tile)
+            for path in paths:
+                if next_move not in path:
+                    potential += (1/2)**(len(path.difference(moves)))
+            moves.remove(tile)
+            if potential > next_move_potential:
+                next_move_potential = potential
+    print('Move ' + str(next_move) + ' gives max Red potential ' + str(next_move_potential))
+
     for move in open_tiles[1:]:
-        temp_potential = 0
-        for path in paths:
-            if move not in path:
-                temp_potential += (1/2)**(len(path.difference(moves)))
-        if temp_potential < potential:
+        max_potential = -1
+        for tile in open_tiles:
+            if tile != move:
+                potential = 0
+                moves.add(tile)
+                for path in paths:
+                    if move not in path:
+                        potential += (1/2)**(len(path.difference(moves)))
+                moves.remove(tile)
+                if potential > max_potential:
+                    max_potential = potential
+        print('Move ' + str(move) + ' gives max Red potential ' + str(max_potential))
+        if max_potential < next_move_potential:
             next_move = move
-            potential = temp_potential
+            next_move_potential = max_potential
 
-    return next_move, potential
+    # # find a move that minimizes the potential function
+    # for move in open_tiles[1:]:
+    #     temp_potential = 0
+    #     moves.add(move)
+    #     for path in paths:
+    #         temp_potential += (1/2)**(len(path.difference(moves)))
+    #     moves.remove(move)
+    #     print('Move ' + str(move) + ' gives potential ' + str(temp_potential))
+    #     if temp_potential > next_move_potential:
+    #         next_move = move
+    #         next_move_potential = temp_potential
+
+    return next_move, next_move_potential
 
 
 if __name__ == "__main__":
@@ -255,7 +330,7 @@ if __name__ == "__main__":
     parser.add_argument('cols', type=int, help='number of columns in the grid')
     parser.add_argument('cell_to_avoid', type=str, nargs='?', default=None,
                         help='coordinates of cell to avoid')
-    parser.add_argument('--interactive', action='store_true', 
+    parser.add_argument('--interactive', action='store_true',
                         help='enable interactive mode')
     parser.add_argument('--visual', action='store_true',
                         help='enable visual mode')
@@ -276,35 +351,35 @@ if __name__ == "__main__":
     all_lengths_blue = {}
     lengths_avoiding_cell_blue = {}
 
-    if (interactive):
+    if interactive:
         game_over = 0 # initialize game loop
         turn = RED # red goes first
-        red_moves = set() 
+        red_moves = set()
         blue_moves = set()
 
         # Compute sets of minimal winning paths for Red and Blue
         red_paths = compute_paths(rows, cols, [], RED, True)
         if rows == cols:
-            blue_paths = red_paths.copy() # saves time, especially on larger grids
+            blue_paths = red_paths.copy()  # saves time on large grids
             for i in range(0, len(blue_paths)):
                 path = set()
                 for tile in blue_paths[i]:
                     path.add((tile[1], tile[0]))
                 blue_paths[i] = path
         else:
-            blue_paths = compute_paths(cols, rows, [], BLUE, True) 
+            blue_paths = compute_paths(cols, rows, [], BLUE, True)
 
         while not game_over:
-            
+
             # print game state and get user input
-            while True:             
+            while True:
                 if visual:
                     print_grid(rows, cols, red_moves, blue_moves, True)
                 else:
                     lst = sorted(all_lengths_red.items(), key=lambda x: (x[0]))
                     print("\nlength distribution of minimal winning paths remaining (Red): ")
                     print(lst)
-                    
+
                     print("\nRed tiles: " + str(list(red_moves)))
                     print("Blue tiles: " + str(list(blue_moves)) + "\n")
 
@@ -312,10 +387,10 @@ if __name__ == "__main__":
                     print("Red's turn")
                 else:
                     print("Blue's turn")
-                
+
                 print("(1) Place a stone at (x,y)")
                 print("(2) Place a random stone")
-                if turn == RED: 
+                if turn == RED:
                     print("(3) Play the potential strategy")
                 print("(x) Exit")
 
@@ -338,7 +413,7 @@ if __name__ == "__main__":
                         else:
                             print("Invalid move. Please try again.")
                     except:
-                        print("Cannot read input. Please try again.")                  
+                        print("Cannot read input. Please try again.")
 
             # choose a random tile
             elif opt == '2':
@@ -347,20 +422,23 @@ if __name__ == "__main__":
 
             # play the potential strategy
             elif opt == '3' and turn == RED:
-                next_move, _ = compute_optimal_move(rows, cols, red_moves, blue_moves, blue_paths, turn)
+                next_move, _ = compute_optimal_move(rows, cols,
+                                                    red_moves, blue_moves,
+                                                    blue_paths, turn)
 
             if turn == RED:
                 red_moves.add(next_move)
 
                 # check win condition
                 for path in red_paths:
-                    if path.issubset(red_moves): 
+                    if path.issubset(red_moves):
                         game_over = True
                         endgame_message = "Red wins!"
                         if visual: # add color
                             endgame_message = "\033[0;31m" + endgame_message + "\033[0m"
 
-                # remove minimal winning paths containing new Red tile from Blue's path set
+                # remove minimal winning paths containing new Red
+                # tile from Blue's path set
                 new_blue_paths = [p for p in blue_paths if next_move not in p]
                 blue_paths = new_blue_paths
 
@@ -375,16 +453,19 @@ if __name__ == "__main__":
 
             else:
                 blue_moves.add(next_move)
-                
+
                 # check win condition
                 for path in blue_paths:
                     if path.issubset(blue_moves):
                         game_over = True
                         endgame_message = "Blue wins!"
                         if visual: # add color
-                            endgame_message = "\033[34m" + endgame_message + "\033[0m"
+                            endgame_message = "\033[34m" + \
+                                              endgame_message + \
+                                              "\033[0m"
 
-                # remove minimal winning paths containing new Blue tile from Red's path set
+                # remove minimal winning paths containing new Blue
+                # tile from Red's path set
                 new_red_paths = [p for p in red_paths if next_move not in p]
                 red_paths = new_red_paths
 
@@ -398,11 +479,12 @@ if __name__ == "__main__":
                         all_lengths_red[path_length] = 1
 
             # if there are no remaining open tiles, the game is a draw
+            # (this means there's a bug somewhere)
             if not get_open_tiles(rows, cols, red_moves, blue_moves) and not game_over:
                 game_over = True
                 endgame_message = "It's a draw."
 
-            turn = not turn # end turn
+            turn = not turn  # end turn
 
         # print final game state and declare winner
         if visual:
