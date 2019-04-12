@@ -69,7 +69,7 @@ def print_summary(all_lengths: Dict[int, int],
 
 def print_grid(rows: int, cols: int, red_moves: Set[Tuple[int, int]],
                blue_moves: Set[Tuple[int, int]], print_length_distr: bool) -> None:
-    os.system('clear') # clear screen before printing updated grid
+    #os.system('clear') # clear screen before printing updated grid
 
     if print_length_distr:
         lst = sorted(all_lengths_red.items(), key=lambda x: (x[0]))
@@ -250,9 +250,12 @@ def compute_potential(paths: List[Set[Tuple[int, int]]],
     return potential
 
 
-def compute_optimal_move(rows: int, cols: int, red_moves: Set[Tuple[int, int]],
+def compute_optimal_move(rows: int, cols: int,
+                         red_moves: Set[Tuple[int, int]],
                          blue_moves: Set[Tuple[int, int]],
-                         paths: List[Set[Tuple[int, int]]], turn: bool):
+                         red_paths: List[Set[Tuple[int, int]]],
+                         blue_paths: List[Set[Tuple[int, int]]],
+                         turn: bool):
     '''
     Compute the optimal next move according to the Erdos-Selfridge
     potential strategy. Return the next move and the Erdos-Selfridge
@@ -266,62 +269,62 @@ def compute_optimal_move(rows: int, cols: int, red_moves: Set[Tuple[int, int]],
     turn: Whose turn it is
     '''
 
+    if turn == RED:
+        current_player_moves = red_moves
+        current_player_paths = red_paths
+        opposing_player_moves = blue_moves
+        opposing_player_paths = blue_paths
+    else:  # turn == BLUE
+        current_player_moves = blue_moves
+        current_player_paths = blue_paths
+        opposing_player_moves = red_moves
+        opposing_player_paths = red_paths
+
     # initialize variables
     open_tiles = get_open_tiles(rows, cols, red_moves, blue_moves)
     next_move = open_tiles[0]
-    next_move_potential = -1
-    if turn == RED:
-        moves = blue_moves
-    else:  # turn == BLUE
-        moves = red_moves
-
-    # For every possible move, we want to compute the maximum value of the
-    # potential function after we play that move and then the other player
-    # selects a move. The move that minimizes this value is the one we want
-    # to choose.
-
-    # for tile in open_tiles:
-    #     if tile != next_move:
-    #         potential = 0
-    #         moves.add(tile)
-    #         for path in paths:
-    #             if next_move not in path:
-    #                 potential += (1/2)**(len(path.difference(moves)))
-    #         moves.remove(tile)
-    #         if potential > next_move_potential:
-    #             next_move_potential = potential
-    # print('Move ' + str(next_move) + ' gives max Red potential ' + str(next_move_potential))
-    #
-    # for move in open_tiles[1:]:
-    #     max_potential = -1
-    #     for tile in open_tiles:
-    #         if tile != move:
-    #             potential = 0
-    #             moves.add(tile)
-    #             for path in paths:
-    #                 if move not in path:
-    #                     potential += (1/2)**(len(path.difference(moves)))
-    #             moves.remove(tile)
-    #             if potential > max_potential:
-    #                 max_potential = potential
-    #     print('Move ' + str(move) + ' gives max Red potential ' + str(max_potential))
-    #     if max_potential < next_move_potential:
-    #         next_move = move
-    #         next_move_potential = max_potential
+    next_move_potential = 0
+    opposing_player_moves.add(next_move)
+    for path in opposing_player_paths:
+        next_move_potential += (1/2) ** (len(path.difference(opposing_player_moves)))
+    opposing_player_moves.remove(next_move)
 
     # find a move that minimizes the potential function
     for move in open_tiles[1:]:
         temp_potential = 0
-        moves.add(move)
-        for path in paths:
-            temp_potential += (1/2)**(len(path.difference(moves)))
-        moves.remove(move)
-        print('Move ' + str(move) + ' gives potential ' + str(temp_potential))
+        opposing_player_moves.add(move)
+        for path in opposing_player_paths:
+            temp_potential += (1/2)**(len(path.difference(opposing_player_moves)))
+        opposing_player_moves.remove(move)
         if temp_potential > next_move_potential:
             next_move = move
             next_move_potential = temp_potential
 
-    return next_move, next_move_potential
+    # find the new max value for the potential function after the opposing
+    # player's next move
+    current_player_moves.add(next_move)
+    open_tiles.remove(next_move)
+    new_opposing_paths = [p for p in opposing_player_paths if next_move not in p]
+    #print("new opposing paths: " + str(new_opposing_paths))
+    final_move = open_tiles[0]
+    final_move_potential = 0
+
+    for move in open_tiles:
+        #print("for move " + str(move) + ": ")
+        temp_potential = 0
+        opposing_player_moves.add(move)
+        for path in new_opposing_paths:
+            amt = (1/2)**(len(path.difference(opposing_player_moves)))
+            #print("potential of path " + str(path) + " = " + str(amt))
+            temp_potential += amt
+        opposing_player_moves.remove(move)
+        if temp_potential > final_move_potential:
+            final_move = move
+            final_move_potential = temp_potential
+
+    current_player_moves.remove(next_move)
+
+    return next_move, final_move_potential
 
 
 if __name__ == "__main__":
